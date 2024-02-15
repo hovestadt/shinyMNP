@@ -6,7 +6,7 @@ options(scipen = 999)
 # script to extract the following summary statistics from all trees of a random forest:
 # pairwise depth between all samples: at which point in trees are samples split (not used in publication)
 # pairwise jaccard between all samples: how much of the path in trees is shared (also not used)
-# pairwise probe usage between all classes: how often is a probe selected to split (used throughout)
+# pairwise probe usage between all classes: how often is a probe selected to split (used throughout publication)
 #
 # volker hovestadt, salvatore benfatto
 # dkfz, dfci
@@ -20,22 +20,22 @@ source("shinyMNP_functions.R")
 
 
 ## load rf classifier
-f <- "rf.v11b2.RData"  # brain tumor classifier (10,000 probes), replace with other rf object of interest
+f <- "rf.RData"  # demo classifier (medulloblastoma subgroups, hovestadt 2013), replace with other rf object of interest
 load(f, verbose = TRUE)
 rf.pred
 # Type of random forest: classification
-# Number of trees: 10000
-# No. of variables tried at each split: 100
+# Number of trees: 1000
+# No. of variables tried at each split: 6
 
 
 ## define terminal node for every reference sample (in-bag and out-of-bag samples)
-load("betas.v11b2.RData", verbose = TRUE)  # exact reference that was used to train the rf classifier
+load("betas.RData", verbose = TRUE)  # exact reference that was used to train the rf classifier
 dim(betas)  # sample x probe
-# [1]   2801 428799
+# [1] 107  48
 
 rf.pred.node <- attr(predict(rf.pred, betas[, rownames(rf.pred$importance)], nodes = TRUE), "nodes")
 dim(rf.pred.node)  # sample x tree
-# [1]  2801 10000
+# [1]  107 1000
 head(rf.pred.node[, 1])  # terminal node for every sample in tree 1
 
 rm(betas)  # not needed anymore
@@ -93,33 +93,39 @@ for(k in seq(ncol(rf.pred.node))) {
 }
 
 
-## save output file
+## save output files
 rflist.pair <- list(depth=sp_inb.depth, jaccard=sp_inb.jaccard, n=sp_inb.n, probe=cp_inb.probe,
                     sample_names=rownames(rf.pred.node), class_names=rf.pred$classes, probe_names=names(rf.pred$forest$ncat))
 str(rflist.pair)
 
 save(rflist.pair, file=paste0(f, ".pairComb.RData"))
-gc()
+
+
+cp_inb.probe.df <- as.data.frame(t(apply(rflist.pair$probe, 3, unlist)))
+rownames(cp_inb.probe.df) <- rflist.pair$probe_names
+colnames(cp_inb.probe.df) <- paste0(rep(rflist.pair$class_names, 4), " vs ", rep(rflist.pair$class_names, each=4))
+
+write.table(cp_inb.probe.df, file=paste0(f, ".pairComb.txt"), sep="\t", quote=FALSE)
 
 
 ## some simple summaries
 # probe usage between classes
 dim(cp_inb.probe)  # class1 x class2 x probe
-# [1]    91    91 10000
+# [1]  4  4 48
 
 # total probe usage
-sum(cp_inb.probe)
+sum(cp_inb.probe)   # has to be zero
 range(cp_inb.probe)
 sum(abs(cp_inb.probe))
 
-# most used probes
+# most used probes overall
 range(apply(abs(cp_inb.probe), 3, sum))
 plot(sort(apply(abs(cp_inb.probe), 3, sum)), type="l", log="y")
 
 which.max(apply(abs(cp_inb.probe), 3, sum))
-image(cp_inb.probe[, , 48], col=colorRampPalette(c("blue", "white", "red"))(100))  # most highly used probe
-image(cp_inb.probe[, , 1234], col=colorRampPalette(c("blue", "white", "red"))(100))   # random probe
+image(cp_inb.probe[, , 40], col=colorRampPalette(c("blue", "white", "red"))(100))  # most highly used probe
 
-
-
+# probes distinguishing classes
+plot(cp_inb.probe[3, 4,])  # group 3 from group 4
+plot(colSums(cp_inb.probe[3, ,]))  # group 3 from all others
 
