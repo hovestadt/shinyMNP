@@ -2,7 +2,7 @@
 
 Explainable artificial intelligence of DNA methylation-based brain tumor diagnostics
 
-Ineractive web application: https://hovestadtlab.shinyapps.io/shinyMNP/
+Interactive web application: https://hovestadtlab.shinyapps.io/shinyMNP/
 
 ## Installation
 
